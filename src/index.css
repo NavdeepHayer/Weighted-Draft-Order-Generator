@@ -1,0 +1,5 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+
+:root { color-scheme: dark; }
+body { @apply bg-slate-950 text-slate-100; }
