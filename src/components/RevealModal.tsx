@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import confetti from "canvas-confetti";
 
 type RevealModalProps = {
   open: boolean;
@@ -10,6 +11,25 @@ type RevealModalProps = {
   onClose: () => void;
   onFinished: () => void;
 };
+
+// --- Global confetti instance attached to <body> ---
+let CONFETTI_INSTANCE: ReturnType<typeof confetti.create> | null = null;
+function getConfettiInstance() {
+  if (typeof window === "undefined") return null;
+  if (!CONFETTI_INSTANCE) {
+    const canvas = document.createElement("canvas");
+    canvas.id = "confetti-root";
+    canvas.style.position = "fixed";
+    canvas.style.inset = "0";
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.style.pointerEvents = "none";
+    canvas.style.zIndex = "2147483647"; // absolute top
+    document.body.appendChild(canvas);
+    CONFETTI_INSTANCE = confetti.create(canvas, { resize: true, useWorker: true });
+  }
+  return CONFETTI_INSTANCE;
+}
 
 export default function RevealModal({
   open,
@@ -23,11 +43,6 @@ export default function RevealModal({
   const [idx, setIdx] = useState(0);                  // next unrevealed index
   const [revealed, setRevealed] = useState<string[]>([]);
   const [spotlight, setSpotlight] = useState<string | null>(null);
-
-  // Confetti canvas INSIDE the modal so it sits above content
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const confettiRef = useRef<((opts: any) => void) | null>(null);
-  const confettiReadyRef = useRef(false);
 
   // The spotlight box DOM node (we’ll fire confetti from its center)
   const spotlightBoxRef = useRef<HTMLDivElement>(null);
@@ -49,28 +64,6 @@ export default function RevealModal({
     }
   }, [open]);
 
-  // Create a confetti instance bound to our modal canvas
-  useEffect(() => {
-    let mounted = true;
-    confettiReadyRef.current = false;
-
-    if (open && canvasRef.current) {
-      import("canvas-confetti").then((m) => {
-        if (!mounted || !canvasRef.current) return;
-        const instance = m.create(canvasRef.current, { resize: true, useWorker: true });
-        confettiRef.current = (opts: any) => instance(opts);
-        // one frame to ensure canvas has final size
-        requestAnimationFrame(() => { confettiReadyRef.current = true; });
-      });
-    }
-
-    return () => {
-      mounted = false;
-      confettiRef.current = null;
-      confettiReadyRef.current = false;
-    };
-  }, [open]);
-
   // EFFECT A: Auto-start next spotlight when none is active
   useEffect(() => {
     if (!open || !auto || finished || spotlight) return;
@@ -79,7 +72,6 @@ export default function RevealModal({
       if (idx < draftOrder.length) {
         const pick = draftOrder[idx];
         setSpotlight(pick);
-        if (idx === 0) fireConfettiFromSpotlight(); // 🎉 first pick
       }
     }, delay);
     return () => clearTimeout(t);
@@ -103,27 +95,49 @@ export default function RevealModal({
 
   // Confetti burst from the CENTER of the spotlight box
   function fireConfettiFromSpotlight() {
-    if (!confettiRef.current || !confettiReadyRef.current || !canvasRef.current) return;
+    const c = getConfettiInstance();
+    if (!c) return;
 
-    let origin = { x: 0.5, y: 0.5 }; // fallback = modal center
+    // Respect reduced motion
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
+
+    let origin = { x: 0.5, y: 0.2 }; // fallback = viewport top-center
     if (spotlightBoxRef.current) {
-      const canvasRect = canvasRef.current.getBoundingClientRect();
-      const spotRect = spotlightBoxRef.current.getBoundingClientRect();
-      const cx = (spotRect.left + spotRect.width / 2 - canvasRect.left) / canvasRect.width;
-      const cy = (spotRect.top + spotRect.height / 2 - canvasRect.top) / canvasRect.height;
+      const r = spotlightBoxRef.current.getBoundingClientRect();
       origin = {
-        x: Math.min(0.98, Math.max(0.02, cx)),
-        y: Math.min(0.98, Math.max(0.02, cy)),
+        x: (r.left + r.width / 2) / window.innerWidth,
+        y: (r.top + r.height / 2) / window.innerHeight,
       };
     }
 
-    confettiRef.current({
-      particleCount: 220,
-      spread: 120,
+    const isSmall = window.matchMedia?.("(max-width: 640px)")?.matches ?? false;
+    const scalar = isSmall ? 0.8 : 1;
+
+    // Center burst
+    c({
+      particleCount: isSmall ? 80 : 140,
+      spread: 75,
       startVelocity: 45,
-      scalar: 1.1,
-      ticks: 200,
+      scalar,
       origin,
+    });
+
+    // Side accents
+    c({
+      particleCount: isSmall ? 40 : 80,
+      angle: 60,
+      spread: 55,
+      startVelocity: 35,
+      scalar,
+      origin: { x: Math.min(0.95, origin.x + 0.35), y: origin.y + 0.03 },
+    });
+    c({
+      particleCount: isSmall ? 40 : 80,
+      angle: 120,
+      spread: 55,
+      startVelocity: 35,
+      scalar,
+      origin: { x: Math.max(0.05, origin.x - 0.35), y: origin.y + 0.03 },
     });
   }
 
@@ -133,7 +147,7 @@ export default function RevealModal({
     if (!spotlight) {
       const pick = draftOrder[idx];
       setSpotlight(pick);
-      if (idx === 0) fireConfettiFromSpotlight();
+      fireConfettiFromSpotlight(); // 🎉 fire on every manual reveal
     } else {
       setRevealed((r) => [...r, spotlight]);
       setSpotlight(null);
@@ -180,12 +194,6 @@ export default function RevealModal({
             exit={{ scale: 0.98, y: 6, opacity: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 24 }}
           >
-            {/* Confetti canvas ABOVE modal content */}
-            <canvas
-              ref={canvasRef}
-              className="pointer-events-none absolute inset-0 w-full h-full z-50"
-            />
-
             {/* Header */}
             <div className="flex items-center justify-between mb-5 relative z-10">
               <h2 className="text-xl font-bold">Live Draft Reveal</h2>

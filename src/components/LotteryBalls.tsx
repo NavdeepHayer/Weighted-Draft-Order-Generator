@@ -1,30 +1,59 @@
-import type { WeightedEntrant } from "../lib/lottery";
+import type { WeightedEntrant } from "../types";
+
+/** Small responsive dot */
+function Dot() {
+  return (
+    <span
+      className="
+        inline-block rounded-full
+        h-2.5 w-2.5 sm:h-3 sm:w-3
+        bg-indigo-400/80
+      "
+    />
+  );
+}
 
 export default function LotteryBalls({ weighted }: { weighted: WeightedEntrant[] }) {
-  const maxW = Math.max(1, ...weighted.map((e) => e.weight));
-  const scale = maxW > 30 ? 30 / maxW : 1;
+  if (!weighted?.length) return null;
+
+  // Scale down dots on very large counts so we don't overflow
+  const maxWeight = Math.max(...weighted.map((w) => w.weight));
+  const scale = maxWeight > 40 ? 0.75 : maxWeight > 80 ? 0.6 : 1;
+
   return (
-    <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold">Lottery Balls (visual)</h2>
-        <span className="text-xs text-slate-400">Scaled if very large</span>
+    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Lottery Balls (visual)</h2>
       </div>
-      <div className="mt-3 grid gap-2">
-        {weighted.map((e) => {
-          const balls = Math.max(1, Math.round(e.weight * scale));
-          return (
-            <div key={e.id} className="flex items-center gap-3">
-              <div className="w-40 truncate">{e.name}</div>
-              <div className="flex flex-wrap gap-1">
-                {Array.from({ length: balls }, (_, i) => (
-                  <span key={i} className="inline-block h-3 w-3 rounded-full bg-indigo-500/80 ring-1 ring-indigo-300/40" />
-                ))}
-              </div>
-              <div className="text-xs text-slate-400 ml-2">w={e.weight}</div>
+
+      <ul className="space-y-3">
+        {weighted.map((t) => (
+          <li
+            key={t.id}
+            className="
+              grid items-start gap-3
+              grid-cols-1 sm:grid-cols-[auto,1fr,auto]
+            "
+          >
+            {/* Name */}
+            <div className="text-slate-200 leading-7">{t.name}</div>
+
+            {/* Dots */}
+            <div
+              className="flex flex-wrap gap-1"
+              style={{ transform: `scale(${scale})`, transformOrigin: "left center" }}
+              aria-label={`${t.name} lottery balls`}
+            >
+              {Array.from({ length: t.weight }).map((_, i) => (
+                <Dot key={i} />
+              ))}
             </div>
-          );
-        })}
-      </div>
+
+            {/* Count */}
+            <div className="text-slate-400 text-sm mt-1 sm:mt-0">w={t.weight}</div>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

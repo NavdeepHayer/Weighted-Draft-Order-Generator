@@ -1,4 +1,7 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  createContext, useCallback, useContext,
+  useEffect, useMemo, useRef, useState
+} from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "./utils";
@@ -30,25 +33,32 @@ export function ToasterProvider({ children }: { children: React.ReactNode }) {
   const push = useCallback(
     (message: string, opts?: Partial<Pick<Toast, "variant" | "duration">>) => {
       const id = crypto.randomUUID();
+
+      const prefersReduced =
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+
       const toast: Toast = {
         id,
         message,
         variant: opts?.variant ?? "info",
-        duration: Math.max(1200, opts?.duration ?? 2400),
+        duration: Math.max(1400, opts?.duration ?? (prefersReduced ? 3200 : 2400)),
       };
       setToasts((xs) => [...xs, toast]);
-      // auto-remove
       window.setTimeout(() => remove(id), toast.duration);
     },
     [remove]
   );
 
-  const api = useMemo<ToastContextValue>(() => ({
-    push,
-    success: (m, d) => push(m, { variant: "success", duration: d }),
-    info: (m, d) => push(m, { variant: "info", duration: d }),
-    error: (m, d) => push(m, { variant: "error", duration: d }),
-  }), [push]);
+  const api = useMemo<ToastContextValue>(
+    () => ({
+      push,
+      success: (m, d) => push(m, { variant: "success", duration: d }),
+      info: (m, d) => push(m, { variant: "info", duration: d }),
+      error: (m, d) => push(m, { variant: "error", duration: d }),
+    }),
+    [push]
+  );
 
   return (
     <ToastCtx.Provider value={api}>
@@ -82,32 +92,52 @@ function Toaster({ toasts, onClose }: { toasts: Toast[]; onClose: (id: string) =
   if (!mountRef.current) return null;
 
   return createPortal(
-    <div className="fixed inset-x-0 bottom-6 z-[2000] flex justify-center pointer-events-none">
-      <div className="flex flex-col gap-4 pointer-events-auto">
+    <div
+      className="fixed inset-x-0 z-[2000] pointer-events-none flex justify-center"
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
+      role="region"
+      aria-label="Notifications"
+    >
+      {/* tighter stack on mobile */}
+      <div className="flex w-full flex-col gap-2 px-3 sm:gap-3 sm:px-0 pointer-events-auto">
         <AnimatePresence initial={false}>
           {toasts.map((t) => (
             <motion.div
               key={t.id}
-              initial={{ opacity: 0, translateY: 20 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              exit={{ opacity: 0, translateY: 20 }}
-              transition={{ duration: 0.25 }}
+              initial={{ opacity: 0, translateY: 20, scale: 0.98 }}
+              animate={{ opacity: 1, translateY: 0, scale: 1 }}
+              exit={{ opacity: 0, translateY: 20, scale: 0.98 }}
+              transition={{ duration: 0.22 }}
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={0.12}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 60 || info.velocity.y > 400) onClose(t.id);
+              }}
               className={cn(
-                "min-w-[480px] max-w-[720px] text-lg px-6 py-4 rounded-2xl border shadow-2xl",
-                "backdrop-blur",
-                t.variant === "success" && "bg-emerald-600/20 border-emerald-500/40 text-emerald-100",
-                t.variant === "info"    && "bg-slate-800/80 border-slate-700 text-slate-100",
-                t.variant === "error"   && "bg-rose-600/20 border-rose-500/40 text-rose-100"
+                // Mobile width: slim, nearly full; Desktop: comfy card
+                "mx-auto w-full max-w-[95%] sm:w-auto sm:max-w-[720px] sm:min-w-[420px]",
+                "rounded-2xl border shadow-2xl backdrop-blur",
+                // Smaller padding + font on mobile; larger on desktop
+                "px-3 py-2 text-sm sm:px-6 sm:py-4 sm:text-lg",
+                t.variant === "success" &&
+                  "bg-emerald-600/20 border-emerald-500/40 text-emerald-100",
+                t.variant === "info" &&
+                  "bg-slate-800/80 border-slate-700 text-slate-100",
+                t.variant === "error" &&
+                  "bg-rose-600/20 border-rose-500/40 text-rose-100"
               )}
+              role="status"
+              aria-live="polite"
             >
-              <div className="flex items-start gap-3">
-                <span aria-hidden className="mt-1 text-xl">
+              <div className="flex items-start gap-2 sm:gap-3">
+                <span aria-hidden className="mt-0.5 sm:mt-1 text-base sm:text-xl">
                   {t.variant === "success" ? "✅" : t.variant === "error" ? "❌" : "ℹ️"}
                 </span>
-                <div className="flex-1">{t.message}</div>
+                <div className="flex-1 leading-snug">{t.message}</div>
                 <button
                   onClick={() => onClose(t.id)}
-                  className="rounded-md px-3 py-1 hover:bg-black/20 text-slate-300"
+                  className="rounded-md px-2 py-1 sm:px-3 hover:bg-black/20 text-slate-300"
                   aria-label="Close notification"
                 >
                   ✕
@@ -121,4 +151,3 @@ function Toaster({ toasts, onClose }: { toasts: Toast[]; onClose: (id: string) =
     mountRef.current
   );
 }
-
