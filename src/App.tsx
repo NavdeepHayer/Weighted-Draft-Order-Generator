@@ -31,7 +31,7 @@ export default function App() {
       <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Weighted Draft Order Generator</h1>
-          <p className="text-slate-400">React + TypeScript + Tailwind. Worse finish → higher weight (w = finish).</p>
+          <p className="text-slate-400">Worse finish → higher weight (w = finish).</p>
         </div>
         <div className="flex gap-2">
           <button
