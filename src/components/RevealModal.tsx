@@ -1,19 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-async function confettiBurst() {
-  try {
-    const confetti = (await import("canvas-confetti")).default;
-    confetti({ particleCount: 200, spread: 80, origin: { y: 0.7 } });
-  } catch {}
-}
-
 type RevealModalProps = {
   open: boolean;
   draftOrder: string[];
-  auto?: boolean;              // auto-advance through picks
-  revealEveryMs?: number;      // time between the start of each spotlight
-  holdSpotlightMs?: number;    // how long the big spotlight holds before placing in list
+  auto?: boolean;               // auto-advance through picks
+  revealEveryMs?: number;       // time between start of each spotlight
+  holdSpotlightMs?: number;     // how long the big spotlight holds before moving to list
   onClose: () => void;
   onFinished: () => void;
 };
@@ -27,9 +20,17 @@ export default function RevealModal({
   onClose,
   onFinished,
 }: RevealModalProps) {
-  const [idx, setIdx] = useState(0);                 // next unrevealed index
+  const [idx, setIdx] = useState(0);                  // next unrevealed index
   const [revealed, setRevealed] = useState<string[]>([]);
   const [spotlight, setSpotlight] = useState<string | null>(null);
+
+  // Confetti canvas INSIDE the modal so it sits above content
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const confettiRef = useRef<((opts: any) => void) | null>(null);
+  const confettiReadyRef = useRef(false);
+
+  // The spotlight box DOM node (we’ll fire confetti from its center)
+  const spotlightBoxRef = useRef<HTMLDivElement>(null);
 
   const finished = idx >= draftOrder.length && draftOrder.length > 0;
 
@@ -48,21 +49,43 @@ export default function RevealModal({
     }
   }, [open]);
 
-  // EFFECT A: Auto-start next spotlight at an interval (only when no spotlight is active)
+  // Create a confetti instance bound to our modal canvas
+  useEffect(() => {
+    let mounted = true;
+    confettiReadyRef.current = false;
+
+    if (open && canvasRef.current) {
+      import("canvas-confetti").then((m) => {
+        if (!mounted || !canvasRef.current) return;
+        const instance = m.create(canvasRef.current, { resize: true, useWorker: true });
+        confettiRef.current = (opts: any) => instance(opts);
+        // one frame to ensure canvas has final size
+        requestAnimationFrame(() => { confettiReadyRef.current = true; });
+      });
+    }
+
+    return () => {
+      mounted = false;
+      confettiRef.current = null;
+      confettiReadyRef.current = false;
+    };
+  }, [open]);
+
+  // EFFECT A: Auto-start next spotlight when none is active
   useEffect(() => {
     if (!open || !auto || finished || spotlight) return;
-    const delay = idx === 0 ? 250 : revealEveryMs; // slight pause before first
+    const delay = idx === 0 ? 250 : revealEveryMs;
     const t = setTimeout(() => {
       if (idx < draftOrder.length) {
         const pick = draftOrder[idx];
         setSpotlight(pick);
-        if (idx === 0) confettiBurst();
+        if (idx === 0) fireConfettiFromSpotlight(); // 🎉 first pick
       }
     }, delay);
     return () => clearTimeout(t);
   }, [open, auto, finished, spotlight, idx, revealEveryMs, draftOrder.length, draftOrder]);
 
-  // EFFECT B: When spotlight appears, schedule commit to the list
+  // EFFECT B: Commit spotlight to list after a short hold
   useEffect(() => {
     if (!open || !spotlight) return;
     const t = setTimeout(() => {
@@ -73,18 +96,44 @@ export default function RevealModal({
     return () => clearTimeout(t);
   }, [open, spotlight, holdSpotlightMs]);
 
-  // Once all picks are placed in the list, notify parent
+  // Notify parent once all picks are placed
   useEffect(() => {
     if (open && finished) onFinished();
   }, [open, finished, onFinished]);
 
-  // Manual step: toggle between showing next spotlight & committing it
+  // Confetti burst from the CENTER of the spotlight box
+  function fireConfettiFromSpotlight() {
+    if (!confettiRef.current || !confettiReadyRef.current || !canvasRef.current) return;
+
+    let origin = { x: 0.5, y: 0.5 }; // fallback = modal center
+    if (spotlightBoxRef.current) {
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const spotRect = spotlightBoxRef.current.getBoundingClientRect();
+      const cx = (spotRect.left + spotRect.width / 2 - canvasRect.left) / canvasRect.width;
+      const cy = (spotRect.top + spotRect.height / 2 - canvasRect.top) / canvasRect.height;
+      origin = {
+        x: Math.min(0.98, Math.max(0.02, cx)),
+        y: Math.min(0.98, Math.max(0.02, cy)),
+      };
+    }
+
+    confettiRef.current({
+      particleCount: 220,
+      spread: 120,
+      startVelocity: 45,
+      scalar: 1.1,
+      ticks: 200,
+      origin,
+    });
+  }
+
+  // Manual step: toggle between revealing & placing
   function stepOnce() {
     if (finished) return;
     if (!spotlight) {
       const pick = draftOrder[idx];
       setSpotlight(pick);
-      if (idx === 0) confettiBurst();
+      if (idx === 0) fireConfettiFromSpotlight();
     } else {
       setRevealed((r) => [...r, spotlight]);
       setSpotlight(null);
@@ -103,7 +152,7 @@ export default function RevealModal({
     []
   );
 
-  // Keep list scrolled to bottom
+  // Keep revealed list scrolled to bottom
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
@@ -131,8 +180,14 @@ export default function RevealModal({
             exit={{ scale: 0.98, y: 6, opacity: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 24 }}
           >
+            {/* Confetti canvas ABOVE modal content */}
+            <canvas
+              ref={canvasRef}
+              className="pointer-events-none absolute inset-0 w-full h-full z-50"
+            />
+
             {/* Header */}
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between mb-5 relative z-10">
               <h2 className="text-xl font-bold">Live Draft Reveal</h2>
               <button
                 onClick={onClose}
@@ -144,9 +199,12 @@ export default function RevealModal({
             </div>
 
             {/* Spotlight + list */}
-            <div className="grid gap-5 md:grid-cols-[1fr,1fr]">
-              {/* Spotlight */}
-              <div className="flex flex-col items-center justify-center min-h-[220px] rounded-xl bg-slate-950/40 border border-slate-800">
+            <div className="grid gap-5 md:grid-cols-[1fr,1fr] relative z-10">
+              {/* Spotlight column */}
+              <div
+                ref={spotlightBoxRef}
+                className="flex flex-col items-center justify-center min-h-[220px] rounded-xl bg-slate-950/40 border border-slate-800"
+              >
                 <AnimatePresence mode="wait">
                   {spotlight ? (
                     <motion.div
@@ -172,7 +230,7 @@ export default function RevealModal({
                 </AnimatePresence>
               </div>
 
-              {/* Revealed list */}
+              {/* Revealed list column */}
               <div className="rounded-xl border border-slate-800 bg-slate-950/40">
                 <div className="px-4 py-3 border-b border-slate-800 text-sm text-slate-400">
                   Revealed picks
@@ -194,11 +252,9 @@ export default function RevealModal({
             </div>
 
             {/* Footer */}
-            <div className="mt-5 flex items-center justify-between">
+            <div className="mt-5 flex items-center justify-between relative z-10">
               <div className="text-sm text-slate-400">
-                {finished
-                  ? "All picks revealed!"
-                  : `Next: #${idx + 1} of ${draftOrder.length}`}
+                {finished ? "All picks revealed!" : `Next: #${idx + 1} of ${draftOrder.length}`}
               </div>
               <div className="flex gap-2">
                 {!auto && !finished && (
