@@ -1,22 +1,63 @@
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Entrant, Scheme } from "../types";
-import { computeWeights, weightedDraft, simulateFirstPick, simulateFullDrafts } from "../lib/lottery";
+import {
+  computeWeights,
+  simulateFirstPick,
+  simulateFullDrafts,
+  weightedDraft,
+} from "../lib/lottery";
 import { rngFactory } from "../lib/rng";
 
-type Matrix = { countsByTeamPick: number[][]; averages: number[] };
+export type Matrix = { countsByTeamPick: number[][]; averages: number[] };
+export type DraftPick = { id: string; name: string };
+
+const STORAGE_KEY = "wdraft_state";
+
+type PersistShape = {
+  entrants: Entrant[];
+  scheme: Scheme;
+  seed: string;
+};
+
+function readStorage(): PersistShape | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistShape>;
+    const entrants = Array.isArray(parsed.entrants) ? parsed.entrants : [];
+    const scheme: Scheme =
+      parsed.scheme === "custom" || parsed.scheme === "inverse" ? parsed.scheme : "inverse";
+    const seed = typeof parsed.seed === "string" ? parsed.seed : "";
+    return { entrants, scheme, seed };
+  } catch {
+    return null;
+  }
+}
 
 export function useLottery(initialEntrants: Entrant[] = []) {
-  const [entrants, setEntrants] = useState<Entrant[]>(initialEntrants);
-  const [scheme, setScheme] = useState<Scheme>("inverse");
-  const [seed, setSeed] = useState("");
-  const [trials, setTrials] = useState(1000);
+  // Synchronous hydration to avoid flicker:
+  const fromStorage = (() => {
+    const s = readStorage();
+    // Use saved entrants only if they’re non-empty; otherwise keep seed data
+    if (s && s.entrants.length > 0) return s;
+    return { entrants: initialEntrants, scheme: "inverse" as Scheme, seed: "" };
+  })();
 
-  const [order, setOrder] = useState<{ id: string; name: string }[]>([]);
+  // Core knobs (hydrated immediately)
+  const [entrants, setEntrants] = useState<Entrant[]>(fromStorage.entrants);
+  const [scheme, setScheme] = useState<Scheme>(fromStorage.scheme);
+  const [seed, setSeed] = useState<string>(fromStorage.seed);
+  const [trials, setTrials] = useState<number>(1000);
+
+  // Outputs
+  const [order, setOrder] = useState<DraftPick[]>([]);
   const [simFirst, setSimFirst] = useState<Map<string, number>>();
   const [matrix, setMatrix] = useState<Matrix>();
 
+  // Derived
   const weighted = useMemo(() => computeWeights(entrants, scheme), [entrants, scheme]);
 
+  // Actions
   const draw = useCallback(() => {
     const rand = rngFactory(seed);
     const result = weightedDraft(weighted, rand);
@@ -31,22 +72,41 @@ export function useLottery(initialEntrants: Entrant[] = []) {
     setMatrix(simulateFullDrafts(weighted, trials, seed));
   }, [weighted, trials, seed]);
 
-  // persistence (localStorage)
-  useEffect(() => {
-    const raw = localStorage.getItem("wdraft_state");
-    if (!raw) return;
+  // Persistence
+  const save = useCallback(() => {
+    const data: PersistShape = { entrants, scheme, seed };
     try {
-      const s = JSON.parse(raw);
-      if (Array.isArray(s.entrants)) setEntrants(s.entrants);
-      if (s.scheme === "custom" || s.scheme === "inverse") setScheme(s.scheme);
-      if (typeof s.seed === "string") setSeed(s.seed);
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      return true;
+    } catch {
+      return false;
+    }
+  }, [entrants, scheme, seed]);
+
+  const load = useCallback(() => {
+    const s = readStorage();
+    if (!s) return false;
+
+    // Only replace entrants if the saved list is non-empty; otherwise keep current
+    if (s.entrants.length > 0) setEntrants(s.entrants);
+    setScheme(s.scheme);
+    setSeed(s.seed);
+
+    // Clear computed outputs after loading a new base state
+    setOrder([]);
+    setSimFirst(undefined);
+    setMatrix(undefined);
+    return true;
   }, []);
 
-  const save = useCallback(() => {
-    localStorage.setItem("wdraft_state", JSON.stringify({ entrants, scheme, seed }));
-  }, [entrants, scheme, seed]);
+  const clearSaved = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
 
   const reset = useCallback(() => {
     setEntrants([]);
@@ -59,10 +119,13 @@ export function useLottery(initialEntrants: Entrant[] = []) {
 
   return {
     // state
-    entrants, scheme, seed, trials, order, simFirst, matrix, weighted,
+    entrants, scheme, seed, trials,
+    order, simFirst, matrix, weighted,
+
     // setters
     setEntrants, setScheme, setSeed, setTrials,
+
     // actions
-    draw, runSimFirst, runSimFull, save, reset,
+    draw, runSimFirst, runSimFull, save, load, reset, clearSaved,
   };
 }

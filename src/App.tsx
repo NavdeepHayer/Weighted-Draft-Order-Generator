@@ -11,7 +11,7 @@ import RevealModal from "./components/RevealModal";
 import { useLottery } from "./hooks/useLottery";
 
 export default function App() {
-  // Seed entrants (only for the first load; persisted state will override)
+  // Seed entrants for first load; hook will hydrate from storage if present
   const initialEntrants: Entrant[] = [
     { id: crypto.randomUUID(), name: "Avery", finish: 14 },
     { id: crypto.randomUUID(), name: "Sam", finish: 10 },
@@ -25,10 +25,11 @@ export default function App() {
     seed, setSeed,
     trials, setTrials,
     order, simFirst, matrix, weighted,
-    draw, runSimFirst, runSimFull, save, reset,
+    draw, runSimFirst, runSimFull,
+    save, load, reset,
   } = useLottery(initialEntrants);
 
-  // UI state for reveal & visibility
+  // UI-only state for reveal & visibility
   const [hasRevealedOnce, setHasRevealedOnce] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [revealOpen, setRevealOpen] = useState(false);
@@ -62,9 +63,13 @@ export default function App() {
           <button
             className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700"
             onClick={() => {
-              // Reload persisted state via useLottery's initial effect:
-              // A quick page reload is the simplest way to re-hydrate
-              location.reload();
+              const ok = load();
+              if (ok) {
+                // Hide results until the user reveals or chooses to show
+                setHasRevealedOnce(false);
+                setShowResults(false);
+                setRevealOpen(false);
+              }
             }}
           >
             Load
