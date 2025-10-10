@@ -1,6 +1,6 @@
-import type { WeightedEntrant } from "../types";
+// Mobile-friendly, wraps nicely; uses a local Weighted type so we don't rely on types.ts
+type Weighted = { id: string; name: string; weight: number; p: number };
 
-/** Small responsive dot */
 function Dot() {
   return (
     <span
@@ -13,17 +13,17 @@ function Dot() {
   );
 }
 
-export default function LotteryBalls({ weighted }: { weighted: WeightedEntrant[] }) {
+export default function LotteryBalls({ weighted }: { weighted: Weighted[] }) {
   if (!weighted?.length) return null;
 
-  // Scale down dots on very large counts so we don't overflow
   const maxWeight = Math.max(...weighted.map((w) => w.weight));
-  const scale = maxWeight > 40 ? 0.75 : maxWeight > 80 ? 0.6 : 1;
+  const scale = maxWeight > 80 ? 0.6 : maxWeight > 40 ? 0.75 : 1;
 
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-lg font-semibold">Lottery Balls (visual)</h2>
+        <span className="text-slate-400 text-xs">Wraps on mobile · Scaled for large weights</span>
       </div>
 
       <ul className="space-y-3">

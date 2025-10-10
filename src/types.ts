@@ -6,3 +6,4 @@ export type Entrant = {
 };
 
 export type Scheme = "inverse" | "custom"; // inverse: w = finish
+export type WeightedEntrant = { id: string; name: string; weight: number; p: number };
