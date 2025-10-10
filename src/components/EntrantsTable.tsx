@@ -1,4 +1,5 @@
 import type { Entrant } from "../types";
+import { Button } from "./ui";
 
 export default function EntrantsTable({
   entrants,
@@ -29,7 +30,9 @@ export default function EntrantsTable({
                 <input
                   value={e.name}
                   onChange={(ev) => {
-                    const next = entrants.map((x) => (x.id === e.id ? { ...x, name: ev.target.value } : x));
+                    const next = entrants.map((x) =>
+                      x.id === e.id ? { ...x, name: ev.target.value } : x,
+                    );
                     onChange(next);
                   }}
                   className="w-full px-2 py-1 rounded-lg bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -43,7 +46,9 @@ export default function EntrantsTable({
                   value={e.finish ?? ""}
                   onChange={(ev) => {
                     const v = ev.target.value === "" ? undefined : Number(ev.target.value);
-                    const next = entrants.map((x) => (x.id === e.id ? { ...x, finish: v } : x));
+                    const next = entrants.map((x) =>
+                      x.id === e.id ? { ...x, finish: v } : x,
+                    );
                     onChange(next);
                   }}
                   className="w-24 px-2 py-1 rounded-lg bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -57,16 +62,22 @@ export default function EntrantsTable({
                   value={e.manualWeight ?? ""}
                   onChange={(ev) => {
                     const v = ev.target.value === "" ? undefined : Number(ev.target.value);
-                    const next = entrants.map((x) => (x.id === e.id ? { ...x, manualWeight: v } : x));
+                    const next = entrants.map((x) =>
+                      x.id === e.id ? { ...x, manualWeight: v } : x,
+                    );
                     onChange(next);
                   }}
                   className="w-28 px-2 py-1 rounded-lg bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </td>
               <td className="py-2 align-middle text-right">
-                <button onClick={() => onRemove(e.id)} className="px-2 py-1 rounded-lg bg-rose-600 hover:bg-rose-500">
+                <Button
+                  onClick={() => onRemove(e.id)}
+                  variant="danger"
+                  size="sm"
+                >
                   Remove
-                </button>
+                </Button>
               </td>
             </tr>
           ))}

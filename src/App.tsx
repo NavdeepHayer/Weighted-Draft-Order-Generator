@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Entrant } from "./types";
+
 import EntrantForm from "./components/EntrantForm";
 import EntrantsTable from "./components/EntrantsTable";
 import SettingsPanel from "./components/SettingsPanel";
@@ -8,7 +9,9 @@ import OddsPanel from "./components/OddsPanel";
 import LotteryBalls from "./components/LotteryBalls";
 import ProbabilityMatrix from "./components/ProbabilityMatrix";
 import RevealModal from "./components/RevealModal";
+
 import { useLottery } from "./hooks/useLottery";
+import { Button, Card, CardContent } from "./components/ui";
 
 export default function App() {
   // Seed entrants for first load; hook will hydrate from storage if present
@@ -54,14 +57,8 @@ export default function App() {
           <p className="text-slate-400">Worse finish → higher weight (w = finish).</p>
         </div>
         <div className="flex gap-2">
-          <button
-            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700"
-            onClick={save}
-          >
-            Save
-          </button>
-          <button
-            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700"
+          <Button onClick={save}>Save</Button>
+          <Button
             onClick={() => {
               const ok = load();
               if (ok) {
@@ -73,9 +70,8 @@ export default function App() {
             }}
           >
             Load
-          </button>
-          <button
-            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700"
+          </Button>
+          <Button
             onClick={() => {
               reset();
               setHasRevealedOnce(false);
@@ -84,20 +80,22 @@ export default function App() {
             }}
           >
             Reset
-          </button>
+          </Button>
         </div>
       </header>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <div className="md:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur p-4">
-          <EntrantForm onAdd={(e) => setEntrants((prev) => [...prev, e])} />
-          <div className="h-4" />
-          <EntrantsTable
-            entrants={entrants}
-            onChange={setEntrants}
-            onRemove={(id) => setEntrants((prev) => prev.filter((x) => x.id !== id))}
-          />
-        </div>
+        <Card className="md:col-span-2">
+          <CardContent>
+            <EntrantForm onAdd={(e) => setEntrants((prev) => [...prev, e])} />
+            <div className="h-4" />
+            <EntrantsTable
+              entrants={entrants}
+              onChange={setEntrants}
+              onRemove={(id) => setEntrants((prev) => prev.filter((x) => x.id !== id))}
+            />
+          </CardContent>
+        </Card>
 
         <SettingsPanel
           scheme={scheme}
@@ -121,18 +119,10 @@ export default function App() {
       {/* Actions for reveal vs instant show */}
       {order.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            onClick={startReveal}
-            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-semibold"
-          >
+          <Button variant="primary" onClick={startReveal}>
             Start Live Reveal
-          </button>
-          <button
-            onClick={showFullOrderNow}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700"
-          >
-            Show Full Order Now
-          </button>
+          </Button>
+          <Button onClick={showFullOrderNow}>Show Full Order Now</Button>
         </div>
       )}
 
@@ -141,15 +131,18 @@ export default function App() {
         {showResults && hasRevealedOnce ? (
           <DraftResults order={order} />
         ) : (
-          <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-4 text-slate-400">
-            Generate an order, then <span className="text-slate-200">Start Live Reveal</span> or{" "}
-            <span className="text-slate-200">Show Full Order Now</span>.
-            {order.length > 0 && !hasRevealedOnce && (
-              <div className="mt-2 text-sm">
-                (Draft order is hidden until reveal completes or you choose to show it.)
-              </div>
-            )}
-          </div>
+          <Card className="bg-slate-900/40 border-dashed">
+            <CardContent className="text-slate-400">
+              Generate an order, then{" "}
+              <span className="text-slate-200">Start Live Reveal</span> or{" "}
+              <span className="text-slate-200">Show Full Order Now</span>.
+              {order.length > 0 && !hasRevealedOnce && (
+                <div className="mt-2 text-sm">
+                  (Draft order is hidden until reveal completes or you choose to show it.)
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
         <OddsPanel weighted={weighted} simFirstCounts={simFirst} />
       </section>
