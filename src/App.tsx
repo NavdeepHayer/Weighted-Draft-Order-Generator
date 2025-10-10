@@ -202,13 +202,10 @@ export default function App() {
         open={revealOpen}
         draftOrder={order.map((o) => o.name)}
         auto
-        delay={2200}
+        revealEveryMs={2600}
+        holdSpotlightMs={1100}
         onClose={() => setRevealOpen(false)}
-        onFinished={() => {
-          // Mark it revealed; then show results in the main UI
-          setHasRevealedOnce(true);
-          setShowResults(true);
-        }}
+        onFinished={() => { setHasRevealedOnce(true); setShowResults(true); }}
       />
 
       <footer className="mt-10 text-xs text-slate-500">
