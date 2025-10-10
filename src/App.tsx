@@ -11,9 +11,19 @@ import ProbabilityMatrix from "./components/ProbabilityMatrix";
 import RevealModal from "./components/RevealModal";
 
 import { useLottery } from "./hooks/useLottery";
-import { Button, Card, CardContent } from "./components/ui";
+import Button from "./components/ui/Button";
+import { Card, CardContent } from "./components/ui/Card";
+import { ToasterProvider, useToast } from "./components/ui/Toaster";
 
 export default function App() {
+  return (
+    <ToasterProvider>
+      <AppInner />
+    </ToasterProvider>
+  );
+}
+
+function AppInner() {
   // Seed entrants for first load; hook will hydrate from storage if present
   const initialEntrants: Entrant[] = [
     { id: crypto.randomUUID(), name: "Avery", finish: 14 },
@@ -37,6 +47,9 @@ export default function App() {
   const [showResults, setShowResults] = useState(false);
   const [revealOpen, setRevealOpen] = useState(false);
 
+  // Toast API
+  const { success, info, error } = useToast();
+
   const startReveal = () => {
     if (order.length === 0) return;
     setRevealOpen(true);
@@ -57,26 +70,38 @@ export default function App() {
           <p className="text-slate-400">Worse finish → higher weight (w = finish).</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={save}>Save</Button>
+          <Button
+            onClick={() => {
+              const ok = save();
+              ok ? success("Saved ✓") : error("Save failed");
+            }}
+          >
+            Save
+          </Button>
+
           <Button
             onClick={() => {
               const ok = load();
               if (ok) {
-                // Hide results until the user reveals or chooses to show
                 setHasRevealedOnce(false);
                 setShowResults(false);
                 setRevealOpen(false);
+                success("Loaded ✓");
+              } else {
+                info("Nothing saved yet");
               }
             }}
           >
             Load
           </Button>
+
           <Button
             onClick={() => {
               reset();
               setHasRevealedOnce(false);
               setShowResults(false);
               setRevealOpen(false);
+              info("Reset");
             }}
           >
             Reset
@@ -110,9 +135,16 @@ export default function App() {
             setHasRevealedOnce(false);
             setShowResults(false);
             setRevealOpen(false);
+            info("Draft generated");
           }}
-          onSimFirst={runSimFirst}
-          onSimFull={runSimFull}
+          onSimFirst={() => {
+            runSimFirst();
+            info("Simulated first-pick odds");
+          }}
+          onSimFull={() => {
+            runSimFull();
+            info(`Simulated ${trials.toLocaleString()} full drafts`);
+          }}
         />
       </section>
 
@@ -169,6 +201,7 @@ export default function App() {
         onFinished={() => {
           setHasRevealedOnce(true);
           setShowResults(true);
+          success("Reveal complete 🎉");
         }}
       />
 
