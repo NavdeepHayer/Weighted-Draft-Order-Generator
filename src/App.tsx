@@ -188,7 +188,7 @@ function AppInner() {
 
       {matrix && (
         <ProbabilityMatrix
-          teams={weighted}
+          teams={weighted} // ✅ Must be weighted, not order
           countsByTeamPick={matrix.countsByTeamPick}
           trials={trials}
           averages={matrix.averages}
