@@ -38,3 +38,6 @@ Thumbs.db
 
 # TypeScript build cache
 *.tsbuildinfo
+
+# League loaded through the MCP server (team names stay local unless you force-add it)
+public/league.json

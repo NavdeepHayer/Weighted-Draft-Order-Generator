@@ -1,3 +1,31 @@
+# Weighted Draft Order Generator
+
+A draft lottery for fantasy leagues: the worse a team finished, the more balls it gets in the hopper.
+
+```bash
+npm install
+npm run dev
+```
+
+## Importing teams
+
+**From a screenshot or a list (in the app).** Click **Import from screenshot**, then drop, paste or
+choose a screenshot of last season's standings. The names and ranks are read in your browser
+(the image is never uploaded) and shown in an editable list before anything is replaced. Emoji in
+team names can't be read, so fix those by hand. You can also type or paste a list instead: one team
+per line, best finish first.
+
+**From Claude (MCP server).** `mcp/server.mjs` is a small MCP server with two tools,
+`get_entrants` and `set_entrants`. It is registered for Claude Code in `.mcp.json`, so in this
+repo you can hand Claude a standings screenshot or a list of names and ask it to load them.
+The server writes `public/league.json`; the app applies that file on load, and the dev server
+picks up changes within a few seconds. The file is gitignored so team names stay on your machine;
+force-add it (`git add -f public/league.json`) if you want the deployed site to start with those teams.
+
+---
+
+The rest of this file is the stock Vite template README.
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

@@ -11,19 +11,20 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  "inline-flex items-center justify-center rounded-xl font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed";
+  "inline-flex items-center justify-center gap-2 rounded-lg font-display font-bold uppercase tracking-[0.08em] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-flame-400 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950 active:translate-y-px disabled:opacity-40 disabled:cursor-not-allowed disabled:active:translate-y-0";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-indigo-600 hover:bg-indigo-500 text-white",
-  secondary: "bg-slate-800 hover:bg-slate-700 text-slate-100",
-  ghost: "bg-transparent hover:bg-slate-800/50 text-slate-100",
-  danger: "bg-rose-600 hover:bg-rose-500 text-white",
+  primary:
+    "bg-flame-500 text-ink-950 hover:bg-flame-400 shadow-[0_10px_24px_-12px_rgb(255_106_31/0.9)]",
+  secondary: "border border-ink-700 bg-ink-800 text-bone hover:border-ink-600 hover:bg-ink-700",
+  ghost: "text-fog hover:bg-ink-800 hover:text-bone",
+  danger: "bg-rose-600 text-white hover:bg-rose-500",
 };
 
 const sizes: Record<Size, string> = {
-  sm: "px-2.5 py-1.5 text-sm",
-  md: "px-3.5 py-2 text-sm",
-  lg: "px-4.5 py-2.5",
+  sm: "px-3 py-1.5 text-xs",
+  md: "px-4 py-2 text-sm",
+  lg: "px-5 py-3 text-base",
 };
 
 export default function Button({
@@ -31,11 +32,13 @@ export default function Button({
   variant = "secondary",
   size = "md",
   loading = false,
+  type = "button",
   children,
   ...props
 }: ButtonProps) {
   return (
     <button
+      type={type}
       className={cn(base, variants[variant], sizes[size], className)}
       aria-busy={loading || undefined}
       {...props}

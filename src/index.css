@@ -1,5 +1,88 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/forms";
 
+@theme {
+  --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Barlow", ui-sans-serif, system-ui, sans-serif;
+
+  /* Surfaces, darkest first */
+  --color-ink-950: #0b0c0f;
+  --color-ink-900: #121418;
+  --color-ink-800: #1a1d23;
+  --color-ink-700: #272b33;
+  --color-ink-600: #3b414c;
+
+  /* Text */
+  --color-bone: #f4f0e8;
+  --color-fog: #9ba1ad;
+
+  /* Ping-pong orange */
+  --color-flame-400: #ff8a4c;
+  --color-flame-500: #ff6a1f;
+  --color-flame-600: #e85510;
+
+  /* Room for the three-column board */
+  --breakpoint-wide: 90rem;
+}
+
 :root { color-scheme: dark; }
-body { @apply bg-slate-950 text-slate-100; }
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-600) transparent;
+}
+
+body {
+  @apply bg-ink-950 font-sans text-bone antialiased;
+  background-image:
+    radial-gradient(900px 420px at 88% -140px, rgb(255 106 31 / 0.14), transparent 70%),
+    radial-gradient(700px 380px at -10% -60px, rgb(255 255 255 / 0.04), transparent 70%);
+  background-repeat: no-repeat;
+}
+
+@layer components {
+  .field {
+    @apply w-full rounded-lg border border-ink-700 bg-ink-950/70 px-3 py-2 text-sm text-bone
+      placeholder:text-fog/50
+      focus:border-flame-500 focus:ring-1 focus:ring-flame-500 focus:outline-none;
+  }
+  .field[type="number"] { appearance: textfield; }
+  .field[type="number"]::-webkit-inner-spin-button,
+  .field[type="number"]::-webkit-outer-spin-button { appearance: none; margin: 0; }
+
+  /* Small caps label used above fields and as table headings */
+  .eyebrow {
+    @apply font-display text-xs font-semibold uppercase tracking-[0.14em] text-fog;
+  }
+
+  /* Page layout: one column, then two, then three once the screen is wide enough */
+  .board {
+    display: grid;
+    gap: 1.25rem;
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "stats" "teams" "draw" "order" "matrix";
+  }
+  @media (min-width: 64rem) {
+    .board {
+      grid-template-columns: minmax(0, 1fr) clamp(18.5rem, 26vw, 21rem);
+      grid-template-areas:
+        "stats  stats"
+        "teams  draw"
+        "order  order"
+        "matrix matrix";
+    }
+  }
+  /* Controls | the field | the draft board, all the same height */
+  @media (min-width: 90rem) {
+    .board {
+      align-items: stretch;
+      grid-template-columns: minmax(20rem, 1fr) minmax(0, 3fr) minmax(22rem, 1.25fr);
+      grid-template-rows: auto 1fr auto;
+      grid-template-areas:
+        "draw   teams  order"
+        "stats  teams  order"
+        "matrix matrix matrix";
+    }
+  }
+}

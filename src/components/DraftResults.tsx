@@ -1,34 +1,64 @@
-import { Card, CardContent } from "./ui/Card";
+import { cn } from "./ui/utils";
 
 type DraftPick = { id: string; name: string };
-// Keep compat if this file was originally typed to WeightedEntrant
-type WeightedEntrant = { id: string; name: string; weight: number; p: number };
 
 type Props = {
-  // Accept either the simple final order (DraftPick[]) or the older WeightedEntrant[]
-  order: DraftPick[] | WeightedEntrant[];
-  title?: string;
+  order: DraftPick[];
+  // One slot per team, so the board is there before anything is drawn
+  slots: number;
+  // A drawn order stays sealed until this is set
+  shown: boolean;
+  // First-pick odds by team id, shown next to each revealed pick
+  odds?: Map<string, number>;
 };
 
-export default function DraftResults({ order, title = "Draft Order" }: Props) {
-  if (!order || order.length === 0) return null;
+// Uneven placeholder bars so a sealed board doesn't give away name lengths
+const SEALED_WIDTHS = ["62%", "44%", "71%", "53%", "80%", "48%", "66%"];
 
-  // Normalize to name list
-  const names = order.map((o) => (o as DraftPick).name ?? (o as WeightedEntrant).name);
+export default function DraftResults({ order, slots, shown, odds }: Props) {
+  const drawn = order.length > 0;
+  const count = Math.max(slots, order.length);
 
   return (
-    <Card>
-      <CardContent>
-        <h2 className="text-lg font-semibold mb-3">{title}</h2>
-        <ol className="space-y-1">
-          {names.map((name, idx) => (
-            <li key={`${idx}-${name}`} className="flex items-center gap-3">
-              <span className="w-6 text-slate-400 tabular-nums">{idx + 1}.</span>
-              <span className="font-medium">{name}</span>
-            </li>
-          ))}
-        </ol>
-      </CardContent>
-    </Card>
+    <ol className="gap-x-0 @2xl:columns-2 @5xl:columns-3">
+      {Array.from({ length: count }, (_, idx) => {
+        const pick = order[idx];
+        const p = pick ? odds?.get(pick.id) : undefined;
+        return (
+          <li
+            key={idx}
+            className="flex h-11 break-inside-avoid items-center gap-4 border-b border-ink-800 px-4 sm:px-5"
+          >
+            <span
+              className={cn(
+                "w-8 font-display text-2xl font-extrabold leading-none tabular-nums",
+                drawn && shown && idx === 0 ? "text-flame-500" : "text-ink-600"
+              )}
+            >
+              {String(idx + 1).padStart(2, "0")}
+            </span>
+            {drawn && shown && pick ? (
+              <>
+                <span className={cn("min-w-0 flex-1 truncate font-medium", idx === 0 && "font-semibold")}>
+                  {pick.name}
+                </span>
+                {p !== undefined && (
+                  <span className="text-xs tabular-nums text-fog" title="First-pick odds going in">
+                    {(p * 100).toFixed(1)}%
+                  </span>
+                )}
+              </>
+            ) : drawn ? (
+              <span
+                className="h-2.5 rounded-full bg-gradient-to-r from-flame-500/40 to-ink-700"
+                style={{ width: SEALED_WIDTHS[idx % SEALED_WIDTHS.length] }}
+              />
+            ) : (
+              <span className="flex-1 border-t border-dashed border-ink-700" />
+            )}
+          </li>
+        );
+      })}
+    </ol>
   );
 }

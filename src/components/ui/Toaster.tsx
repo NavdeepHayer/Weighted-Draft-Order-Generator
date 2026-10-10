@@ -116,28 +116,28 @@ function Toaster({ toasts, onClose }: { toasts: Toast[]; onClose: (id: string) =
               }}
               className={cn(
                 // Mobile width: slim, nearly full; Desktop: comfy card
-                "mx-auto w-full max-w-[95%] sm:w-auto sm:max-w-[720px] sm:min-w-[420px]",
-                "rounded-2xl border shadow-2xl backdrop-blur",
+                "mx-auto w-full max-w-[95%] sm:w-auto sm:max-w-[560px] sm:min-w-[320px]",
+                "rounded-xl border shadow-2xl backdrop-blur",
                 // Smaller padding + font on mobile; larger on desktop
-                "px-3 py-2 text-sm sm:px-6 sm:py-4 sm:text-lg",
+                "px-3 py-2 text-sm sm:px-4 sm:py-3 sm:text-base",
                 t.variant === "success" &&
-                  "bg-emerald-600/20 border-emerald-500/40 text-emerald-100",
+                  "bg-emerald-950/90 border-emerald-500/40 text-emerald-100",
                 t.variant === "info" &&
-                  "bg-slate-800/80 border-slate-700 text-slate-100",
+                  "bg-ink-800/95 border-ink-600 text-bone",
                 t.variant === "error" &&
-                  "bg-rose-600/20 border-rose-500/40 text-rose-100"
+                  "bg-rose-950/90 border-rose-500/40 text-rose-100"
               )}
               role="status"
               aria-live="polite"
             >
               <div className="flex items-start gap-2 sm:gap-3">
-                <span aria-hidden className="mt-0.5 sm:mt-1 text-base sm:text-xl">
+                <span aria-hidden className="mt-0.5 text-base">
                   {t.variant === "success" ? "✅" : t.variant === "error" ? "❌" : "ℹ️"}
                 </span>
                 <div className="flex-1 leading-snug">{t.message}</div>
                 <button
                   onClick={() => onClose(t.id)}
-                  className="rounded-md px-2 py-1 sm:px-3 hover:bg-black/20 text-slate-300"
+                  className="rounded-md px-2 py-0.5 text-fog hover:bg-black/20 hover:text-bone"
                   aria-label="Close notification"
                 >
                   ✕

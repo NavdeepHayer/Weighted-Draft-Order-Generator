@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { Entrant, Scheme } from "../types";
 import {
   computeWeights,
@@ -7,6 +7,7 @@ import {
   weightedDraft,
 } from "../lib/lottery";
 import { rngFactory } from "../lib/rng";
+import type { LeagueFile } from "../lib/leagueFile";
 
 export type Matrix = { countsByTeamPick: number[][]; averages: number[] };
 export type DraftPick = { id: string; name: string };
@@ -17,6 +18,7 @@ type PersistShape = {
   entrants: Entrant[];
   scheme: Scheme;
   seed: string;
+  leagueStamp?: string; // updatedAt of the league file these entrants came from
 };
 
 function readStorage(): PersistShape | null {
@@ -28,7 +30,8 @@ function readStorage(): PersistShape | null {
     const scheme: Scheme =
       parsed.scheme === "custom" || parsed.scheme === "inverse" ? parsed.scheme : "inverse";
     const seed = typeof parsed.seed === "string" ? parsed.seed : "";
-    return { entrants, scheme, seed };
+    const leagueStamp = typeof parsed.leagueStamp === "string" ? parsed.leagueStamp : undefined;
+    return { entrants, scheme, seed, leagueStamp };
   } catch {
     return null;
   }
@@ -40,7 +43,7 @@ export function useLottery(initialEntrants: Entrant[] = []) {
     const s = readStorage();
     // Use saved entrants only if they’re non-empty; otherwise keep seed data
     if (s && s.entrants.length > 0) return s;
-    return { entrants: initialEntrants, scheme: "inverse" as Scheme, seed: "" };
+    return { entrants: initialEntrants, scheme: "inverse" as Scheme, seed: "", leagueStamp: undefined };
   })();
 
   // Core knobs (hydrated immediately)
@@ -53,6 +56,9 @@ export function useLottery(initialEntrants: Entrant[] = []) {
   const [order, setOrder] = useState<DraftPick[]>([]);
   const [simFirst, setSimFirst] = useState<Map<string, number>>();
   const [matrix, setMatrix] = useState<Matrix>();
+
+  // Which league file is on screen, so the same one is never applied twice
+  const leagueStamp = useRef(fromStorage.leagueStamp);
 
   // Derived
   const weighted = useMemo(() => computeWeights(entrants, scheme), [entrants, scheme]);
@@ -72,9 +78,26 @@ export function useLottery(initialEntrants: Entrant[] = []) {
     setMatrix(simulateFullDrafts(weighted, trials, seed));
   }, [weighted, trials, seed]);
 
+  // Swap in a whole new field; anything drawn or simulated from the old one is stale
+  const replaceEntrants = useCallback((next: Entrant[]) => {
+    setEntrants(next);
+    setOrder([]);
+    setSimFirst(undefined);
+    setMatrix(undefined);
+  }, []);
+
+  const applyLeague = useCallback((league: LeagueFile) => {
+    if (league.updatedAt === leagueStamp.current) return false;
+    leagueStamp.current = league.updatedAt;
+    replaceEntrants(league.entrants);
+    if (league.scheme) setScheme(league.scheme);
+    if (league.seed !== undefined) setSeed(league.seed);
+    return true;
+  }, [replaceEntrants]);
+
   // Persistence
   const save = useCallback(() => {
-    const data: PersistShape = { entrants, scheme, seed };
+    const data: PersistShape = { entrants, scheme, seed, leagueStamp: leagueStamp.current };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       return true;
@@ -127,5 +150,6 @@ export function useLottery(initialEntrants: Entrant[] = []) {
 
     // actions
     draw, runSimFirst, runSimFull, save, load, reset, clearSaved,
+    replaceEntrants, applyLeague,
   };
 }

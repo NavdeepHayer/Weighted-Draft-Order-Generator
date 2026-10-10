@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "draft-order": {
+      "command": "node",
+      "args": ["mcp/server.mjs"]
+    }
+  }
+}
